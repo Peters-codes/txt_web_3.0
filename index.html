@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculator</title>
+    <style>
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; }
+        body { background-color: #f0f0f0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; position: relative; }
+        .page { display: none; width: 100%; height: 100%; }
+        .page.active { display: flex; flex-direction: column; }
+        #page-calculator { display: none; justify-content: center; align-items: center; background-color: #e5e5e5; }
+        #page-calculator.active { display: flex; }
+        .calc-body { background-color: #ffffff; width: 400px; height: 520px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 20px; display: flex; flex-direction: column; justify-content: space-between; transition: opacity 0.5s ease-out; }
+        .calc-header { font-family: monospace; color: #888; font-size: 14px; text-align: center; margin-bottom: 5px; }
+        .calc-screen { background-color: #1a2a1a; color: #00ff00; font-family: 'Courier New', Courier, monospace; font-size: 32px; text-align: right; padding: 15px; border-radius: 10px; height: 70px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: flex-end; word-break: break-all; transition: background-color 0.2s; }
+        .calc-screen.error { background-color: #5a1a1a; color: #ff3333; }
+        .calc-screen.unlocked { background-color: #1a5a1a; color: #33ff33; }
+        .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 15px; }
+        .calc-btn { background-color: #f3f3f3; border: none; outline: none; border-radius: 12px; font-size: 20px; font-weight: bold; height: 65px; cursor: pointer; }
+        .calc-btn:active { background-color: #ddd; }
+        .calc-btn-operator { background-color: #e0e0e0; }
+        .calc-btn-equals { outline: 2px solid #007aff; background-color: #e0f0ff; }
+        .app-container { width: 1024px; height: 768px; background: white; box-shadow: 0 10px 40px rgba(0,0,0,0.1); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+        .app-header { height: 60px; background-color: #f7f7f7; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; }
+        .header-left, .header-right { display: flex; align-items: center; gap: 15px; }
+        .header-title { font-weight: bold; font-size: 16px; }
+        .header-profile-pic { width: 40px; height: 40px; border-radius: 50%; background-color: #007aff; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; }
+        .panic-btn { width: 42px; height: 42px; background-color: #ff3b30; border-radius: 50%; border: none; color: white; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 3px 8px rgba(255,59,48,0.35); z-index: 1000; transition: transform 0.15s; }
+        .panic-btn:hover { transform: scale(1.08); }
+        .panic-btn-blue { width: 42px; height: 42px; background-color: #007aff; border-radius: 50%; border: none; color: white; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 3px 8px rgba(0,122,255,0.35); z-index: 1000; transition: transform 0.15s; }
+        .panic-btn-blue:hover { transform: scale(1.08); }
+        .panic-bar { position: absolute; top: 70px; right: 16px; display: flex; gap: 10px; z-index: 1000; }
+        .dashboard-content { flex: 1; display: flex; overflow: hidden; }
+        .col-left { width: 30%; border-right: 1px solid #e0e0e0; display: flex; flex-direction: column; }
+        .col-mid { width: 30%; border-right: 1px solid #e0e0e0; padding: 20px; background-color: #fcfcfc; display: flex; flex-direction: column; align-items: center; }
+        .col-right { width: 40%; padding: 20px; position: relative; display: flex; flex-direction: column; }
+        .scrollable-list { flex: 1; overflow-y: auto; }
+        .chat-card { display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background-color 0.2s; }
+        .chat-card:hover { background-color: #f9f9f9; }
+        .chat-avatar { width: 44px; height: 44px; border-radius: 50%; background-color: #ccc; margin-right: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; flex-shrink: 0; }
+        .chat-info { flex: 1; min-width: 0; }
+        .chat-name { font-weight: bold; font-size: 14px; margin-bottom: 3px; }
+        .chat-preview { font-size: 12px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .add-friend-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; text-align: center; margin-top: 40px; }
+        .add-friend-title { font-weight: bold; font-size: 16px; margin-bottom: 20px; }
+        .add-input { width: 100%; padding: 12px 15px; border-radius: 25px; border: 1px solid #ccc; outline: none; margin-bottom: 15px; text-align: center; font-size: 14px; }
+        .add-btn { width: 100%; padding: 12px; border-radius: 25px; border: none; background-color: #34c759; color: white; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
+        .add-btn:hover { opacity: 0.9; }
+        .feed-header { font-weight: bold; font-size: 16px; margin-bottom: 15px; }
+        .note-card { background: white; border-radius: 12px; padding: 15px; border: 1px solid #e0e0e0; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); position: relative; }
+        .note-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .note-author { font-weight: bold; font-size: 12px; }
+        .note-content { font-size: 14px; color: #333; text-align: center; padding: 10px 0; }
+        .note-time { font-size: 10px; color: #999; text-align: right; }
+        .write-note-btn { position: absolute; bottom: 20px; right: 20px; width: 50px; height: 50px; border-radius: 50%; background-color: #007aff; color: white; border: none; font-size: 24px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,122,255,0.3); }
+        .mobile-nav { display: none; height: 60px; border-top: 1px solid #e0e0e0; background: #f7f7f7; }
+        .chat-area { flex: 1; background-color: #f5f5f5; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg-bubble { max-width: 60%; padding: 12px 16px; border-radius: 20px; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
+        .msg-bubble.received { background-color: white; align-self: flex-start; border-bottom-left-radius: 4px; }
+        .msg-bubble.sent { background-color: #007aff; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .msg-time { font-size: 10px; color: #999; margin-top: 4px; align-self: flex-start; }
+        .msg-bubble.sent + .msg-time { align-self: flex-end; }
+        .chat-input-bar { height: 60px; border-top: 1px solid #e0e0e0; display: flex; align-items: center; padding: 10px; background: white; }
+        .chat-input { flex: 1; border: 1px solid #ccc; border-radius: 20px; padding: 10px 15px; outline: none; margin: 0 10px; }
+        .send-btn { background-color: #007aff; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .profile-container { flex: 1; background-color: #f9f9f9; display: flex; justify-content: center; align-items: center; }
+        .profile-card { background: white; width: 600px; height: 500px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
+        .profile-avatar-sec { position: relative; cursor: pointer; }
+        .profile-pic-large { width: 120px; height: 120px; border-radius: 50%; background-color: #007aff; color: white; font-size: 48px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+        .profile-field { display: flex; align-items: center; gap: 10px; font-size: 18px; }
+        .profile-field span { font-weight: bold; }
+        .edit-icon { cursor: pointer; color: #007aff; font-size: 14px; }
+        .code-box { background-color: #333; color: white; font-family: monospace; padding: 15px 30px; border-radius: 10px; font-size: 20px; letter-spacing: 2px; margin: 15px 0; }
+        .profile-actions { display: flex; gap: 20px; width: 100%; }
+        .btn-action { flex: 1; padding: 15px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; }
+        .btn-copy { background-color: #007aff; color: white; }
+        .btn-regen { background-color: white; border: 2px solid #ff3b30; color: #ff3b30; }
+        .easter-egg { font-size: 10px; color: #aaa; text-align: center; cursor: pointer; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 2000; }
+        .modal-card { background: white; width: 400px; border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-icon { font-size: 50px; margin-bottom: 15px; }
+        .modal-text { font-size: 16px; margin-bottom: 25px; color: #333; }
+        .modal-buttons { display: flex; flex-direction: column; gap: 10px; }
+        .modal-btn { padding: 12px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; }
+        .modal-btn-primary { background-color: #007aff; color: white; }
+        .modal-btn-secondary { background-color: #f0f0f0; color: #333; }
+        .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 25px; font-size: 14px; z-index: 3000; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
+        .toast.show { opacity: 1; }
+        .empty-state { text-align: center; padding: 40px; color: #999; }
+        .empty-state-icon { font-size: 40px; margin-bottom: 10px; }
+        .empty-state-title { font-weight: bold; color: #666; margin-bottom: 5px; }
+        .empty-state-sub { font-size: 13px; }
+        .remove-friend-btn { background: #ff3b30; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; margin-right: 8px; }
+
+        /* --- HARRY POTTER DECOY BOOK --- */
+        #page-harry-potter { display: none; justify-content: center; align-items: center; background: linear-gradient(135deg, #2c1810 0%, #1a0f0a 100%); }
+        #page-harry-potter.active { display: flex; }
+        .hp-book-wrapper { display: flex; align-items: center; gap: 20px; position: relative; }
+        .hp-book { background-color: #f4e4bc; width: 500px; max-height: 85vh; border-radius: 4px; box-shadow: 0 20px 60px rgba(0,0,0,0.6), inset 0 0 80px rgba(139,69,19,0.15); padding: 50px 45px; overflow-y: auto; position: relative; }
+        .hp-book::before { content: ""; position: absolute; left: 30px; top: 20px; bottom: 20px; width: 2px; background: linear-gradient(to bottom, transparent, rgba(139,69,19,0.3), transparent); }
+        .hp-chapter { font-family: Georgia, 'Times New Roman', serif; color: #5a3a2a; font-size: 11px; text-transform: uppercase; letter-spacing: 3px; text-align: center; margin-bottom: 8px; }
+        .hp-title { font-family: Georgia, 'Times New Roman', serif; color: #3d2416; font-size: 26px; text-align: center; margin-bottom: 30px; font-weight: bold; border-bottom: 2px solid #c9a86c; padding-bottom: 15px; }
+        .hp-text { font-family: Georgia, 'Times New Roman', serif; color: #3d2416; font-size: 15px; line-height: 1.8; text-align: justify; }
+        .hp-text p { margin-bottom: 18px; text-indent: 30px; }
+        .hp-text p:first-of-type { text-indent: 0; }
+        .hp-dropcap { float: left; font-size: 58px; line-height: 50px; padding-right: 8px; padding-top: 4px; color: #8b4513; font-weight: bold; }
+        .hp-secret { cursor: pointer; transition: color 0.2s; }
+        .hp-secret:hover { color: #8b4513; }
+        .hp-page-num { text-align: center; font-family: Georgia, serif; color: #8b7355; font-size: 12px; margin-top: 30px; }
+        .hp-nav-btn { background: rgba(244,228,188,0.15); border: 1px solid rgba(244,228,188,0.3); color: #f4e4bc; width: 44px; height: 44px; border-radius: 50%; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .hp-nav-btn:hover { background: rgba(244,228,188,0.3); }
+        .hp-nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+        .hp-unlock-hint { position: fixed; bottom: 20px; right: 20px; color: rgba(244,228,188,0.25); font-size: 10px; font-family: monospace; }
+        .hp-page { display: none; }
+        .hp-page.active { display: block; }
+
+        @media (max-width: 1024px) {
+            body { background-color: white; }
+            .app-container { width: 100vw; height: 100vh; border-radius: 0; box-shadow: none; }
+            .col-left, .col-mid, .col-right { width: 100%; border-right: none; display: none; }
+            .col-left.mobile-active, .col-mid.mobile-active, .col-right.mobile-active { display: flex; }
+            .mobile-nav { display: flex; justify-content: space-around; align-items: center; }
+            .mobile-tab { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #888; cursor: pointer; }
+            .mobile-tab.active { color: #007aff; }
+            .calc-body { width: 90%; height: 80%; }
+            .calc-btn { height: 75px; font-size: 24px; }
+            .profile-card { width: 95%; height: auto; gap: 20px; }
+            .profile-actions { flex-direction: column; }
+            .panic-bar { top: 66px; right: 10px; }
+            .panic-btn, .panic-btn-blue { width: 38px; height: 38px; font-size: 16px; }
+            .hp-book { width: 85%; padding: 30px 25px; }
+            .hp-book-wrapper { gap: 10px; }
+        }
+    </style>
+<base target="_blank">
+</head>
+<body>
+    <div id="page-calculator" class="page active">
+        <div class="calc-body">
+            <div class="calc-header">STEALTH CALC v1.0</div>
+            <div id="calc-screen" class="calc-screen">0</div>
+            <div class="calc-grid">
+                <button class="calc-btn calc-btn-operator" onclick="pressCalc('C')">C</button>
+                <button class="calc-btn calc-btn-operator" onclick="pressCalc('/')">÷</button>
+                <button class="calc-btn calc-btn-operator" onclick="pressCalc('*')">×</button>
+                <button class="calc-btn calc-btn-operator" onclick="pressCalc('-')">−</button>
+                <button class="calc-btn" onclick="pressCalc('7')">7</button>
+                <button class="calc-btn" onclick="pressCalc('8')">8</button>
+                <button class="calc-btn" onclick="pressCalc('9')">9</button>
+                <button class="calc-btn calc-btn-operator" onclick="pressCalc('+')">+</button>
+                <button class="calc-btn" onclick="pressCalc('4')">4</button>
+                <button class="calc-btn" onclick="pressCalc('5')">5</button>
+                <button class="calc-btn" onclick="pressCalc('6')">6</button>
+                <button class="calc-btn" onclick="pressCalc('.')">.</button>
+                <button class="calc-btn" onclick="pressCalc('1')">1</button>
+                <button class="calc-btn" onclick="pressCalc('2')">2</button>
+                <button class="calc-btn" onclick="pressCalc('3')">3</button>
+                <button class="calc-btn calc-btn-equals" onclick="pressCalc('=')">=</button>
+                <button class="calc-btn" style="grid-column: span 2;" onclick="pressCalc('0')">0</button>
+                <button class="calc-btn calc-btn-equals" style="grid-column: span 2;" onclick="pressCalc('=')">=</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="page-harry-potter" class="page">
+        <div class="hp-book-wrapper">
+            <button class="hp-nav-btn" id="hp-prev" onclick="hpTurnPage(-1)">◀</button>
+            <div class="hp-book">
+                <div class="hp-page" id="hp-page-246">
+                    <div class="hp-chapter">Chapter Twelve</div>
+                    <div class="hp-title">The Mirror of Secrets</div>
+                    <div class="hp-text">
+                        <p><span class="hp-dropcap">T</span>he corridors of the old castle were drafty and cold that evening. Young Alistair pulled his robes tighter as he crept past the portraits, their painted eyes seeming to follow his every move. He wasn't supposed to be out after curfew, but the map in his pocket glowed with a faint blue light, urging him onward.</p>
+                        <p>He had heard whispers in the common room about a hidden room on the seventh floor — a place that appeared only to those who truly needed it. Some called it the Room of Requirement, but the older students spoke of it in hushed tones as simply "the wand room."</p>
+                        <p>Alistair stopped before a blank stretch of wall between two tapestries depicting forgotten battles. He closed his eyes and paced three times, thinking desperately of a place where he could practice spells without being caught. On his third turn, a smooth door materialized from the stone.</p>
+                    </div>
+                    <div class="hp-page-num">— 246 —</div>
+                </div>
+                <div class="hp-page active" id="hp-page-247">
+                    <div class="hp-chapter">Chapter Twelve</div>
+                    <div class="hp-title">The Mirror of Secrets</div>
+                    <div class="hp-text">
+                        <p>The room inside was impossibly vast, filled with towering piles of forgotten furniture, broken instruments, and trunks left behind by generations of students. Moonlight streamed through a high window, illuminating a dusty mirror standing alone in the center of the chamber.</p>
+                        <p>It was unlike any mirror he had seen before. The frame was twisted silver, and the glass seemed to swirl like fog. As Alistair stepped closer, his reflection did not mimic him. Instead, it smiled — a smile he had not made — and raised a hand to point at something behind him.</p>
+                        <p>He spun around, heart pounding, but saw only shadows. When he turned back to the glass, the reflection was writing words in the condensation with its finger: <em>"Three turns, a secret wish, and the <span class="hp-secret" onclick="hpSecretClick()">wand</span> chooses the wizard."</em></p>
+                        <p>Outside, an owl hooted in the darkness. Alistair reached out and touched the cold surface of the mirror, wondering if some secrets were better left undisturbed.</p>
+                    </div>
+                    <div class="hp-page-num">— 247 —</div>
+                </div>
+                <div class="hp-page" id="hp-page-248">
+                    <div class="hp-chapter">Chapter Twelve</div>
+                    <div class="hp-title">The Mirror of Secrets</div>
+                    <div class="hp-text">
+                        <p>Behind him, the door creaked. Alistair spun around, hand instinctively reaching for his pocket, but it was only the wind slipping through a crack in the ancient stone. Still, the hairs on the back of his neck stood on end. The mirror had shown him something — or someone — and he couldn't shake the feeling that he was no longer alone.</p>
+                        <p>He backed away slowly, never taking his eyes off the swirling glass. The reflection waved goodbye, its grin widening into something that made Alistair's blood run cold. He turned and ran, robes billowing behind him, the sound of soft laughter echoing through the piles of forgotten things.</p>
+                        <p>By the time he reached the common room, breathless and pale, his housemates were already asleep. He climbed into bed and pulled the curtains shut, but sleep did not come easily. Somewhere in the castle, the mirror waited — and it knew his name.</p>
+                    </div>
+                    <div class="hp-page-num">— 248 —</div>
+                </div>
+            </div>
+            <button class="hp-nav-btn" id="hp-next" onclick="hpTurnPage(1)">▶</button>
+        </div>
+        <div class="hp-unlock-hint">tap the magic word 5 times</div>
+    </div>
+
+    <div id="app-wrapper" class="app-container" style="display: none;">
+        <div class="panic-bar">
+            <button class="panic-btn" onclick="triggerPanic()" title="Panic: Calculator (Cmd+Shift+C)">🚨</button>
+            <button class="panic-btn-blue" onclick="triggerHarryPotter()" title="Panic: Book (Cmd+Shift+H)">🧙</button>
+        </div>
+
+        <div id="page-dm-homepage" class="page">
+            <div class="app-header">
+                <div class="header-left"><span style="font-size: 20px;">🧮</span><span class="header-title" style="color: grey;">CALC</span></div>
+                <div id="current-datetime" style="font-size: 13px; color: #666;">Wed, July 15 · 12:00 PM</div>
+                <div class="header-right"><div id="header-avatar" class="header-profile-pic" onclick="goToPage('page-profile')">A</div></div>
+            </div>
+            <div class="dashboard-content">
+                <div id="tab-chats" class="col-left mobile-active"><div id="chat-list" class="scrollable-list"></div></div>
+                <div id="tab-add" class="col-mid">
+                    <div class="add-friend-card">
+                        <div class="add-friend-title">ADD FRIEND</div>
+                        <input type="text" id="add-friend-input" class="add-input" placeholder="Enter Code (e.g. #SCHOOL-1234)">
+                        <button class="add-btn" onclick="submitAddFriend()">➕ ADD</button>
+                    </div>
+                </div>
+                <div id="tab-feed" class="col-right">
+                    <div class="feed-header">Public Notes Feed</div>
+                    <div id="notes-list" class="scrollable-list"></div>
+                    <button class="write-note-btn" onclick="openWriteNoteModal()">➕</button>
+                </div>
+            </div>
+            <div class="mobile-nav">
+                <div class="mobile-tab active" onclick="switchMobileTab('tab-chats', this)"><span style="font-size: 20px;">💬</span><span>Chats</span></div>
+                <div class="mobile-tab" onclick="switchMobileTab('tab-add', this)"><span style="font-size: 20px;">➕</span><span>Add</span></div>
+                <div class="mobile-tab" onclick="switchMobileTab('tab-feed', this)"><span style="font-size: 20px;">📝</span><span>Feed</span></div>
+            </div>
+        </div>
+
+        <div id="page-texting" class="page">
+            <div class="app-header">
+                <div class="header-left">
+                    <span style="cursor: pointer; font-size: 18px;" onclick="goToPage('page-dm-homepage')">◀ BACK</span>
+                    <div id="active-chat-avatar" class="chat-avatar" style="width: 35px; height:35px; margin-right: 0;">S</div>
+                    <span id="active-chat-name" class="header-title">Sarah</span>
+                </div>
+                <div class="header-right">
+                    <button class="remove-friend-btn" onclick="removeCurrentFriend()">🗑️ REMOVE</button>
+                    <button style="background: red; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;" onclick="triggerPanic()">📱 CALCULATOR</button>
+                </div>
+            </div>
+            <div id="chat-messages" class="chat-area"></div>
+            <div class="chat-input-bar">
+                <span style="font-size: 20px; cursor: pointer; color: grey;">📎</span>
+                <input type="text" id="message-input" class="chat-input" placeholder="Type a message...">
+                <button class="send-btn" onclick="sendMessage()">📤</button>
+            </div>
+        </div>
+
+        <div id="page-profile" class="page">
+            <div class="app-header">
+                <div class="header-left"><span style="cursor: pointer; font-size: 18px;" onclick="goToPage('page-dm-homepage')">◀ BACK TO DM</span></div>
+                <div class="header-title">PROFILE</div>
+                <div class="header-right">🔒</div>
+            </div>
+            <div class="profile-container">
+                <div class="profile-card">
+                    <div class="profile-avatar-sec" onclick="countAvatarClicks()"><div id="profile-pic" class="profile-pic-large">A</div></div>
+                    <div class="profile-field"><span id="profile-name">Alex Cool</span><span class="edit-icon" onclick="editProfileName()">✏️ Edit</span></div>
+                    <div class="profile-field"><span id="profile-bio" style="font-weight: normal; color: #555;">School Ninja 🥷</span><span class="edit-icon" onclick="editProfileBio()">✏️ Edit</span></div>
+                    <div><div style="font-size: 12px; color: #666; text-align: center;">YOUR UNIQUE ADD CODE</div><div id="profile-code" class="code-box">#SCHOOL-7842</div></div>
+                    <div class="profile-actions"><button class="btn-action btn-copy" onclick="copyCodeToClipboard()">📋 COPY CODE</button><button class="btn-action btn-regen" onclick="regenerateCode()">🔄 REGENERATE CODE</button></div>
+                    <div class="easter-egg">Tap avatar 5 times to change passcode</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-container" class="modal-overlay">
+        <div id="modal-success" class="modal-card" style="display: none;"><div class="modal-icon">✅</div><div id="success-text" class="modal-text">Friend Added successfully!</div><div class="modal-buttons"><button class="modal-btn modal-btn-primary" id="btn-success-chat" onclick="closeModal()">SEND A MESSAGE</button><button class="modal-btn modal-btn-secondary" onclick="closeModal()">CLOSE</button></div></div>
+        <div id="modal-error" class="modal-card" style="display: none;"><div class="modal-icon">❌</div><div id="error-text" class="modal-text">Code invalid. Try again.</div><div class="modal-buttons"><button class="modal-btn modal-btn-secondary" onclick="closeModal()">CLOSE</button></div></div>
+        <div id="modal-write-note" class="modal-card" style="display: none;"><h3 style="margin-bottom: 15px;">What's on your mind?</h3><textarea id="note-text-input" maxlength="280" style="width: 100%; height: 100px; border-radius: 10px; padding: 10px; border: 1px solid #ccc; outline: none; margin-bottom: 15px;" placeholder="Type here... (Max 280 characters)"></textarea><div class="modal-buttons"><button class="modal-btn modal-btn-primary" onclick="submitNote()">POST NOTE</button><button class="modal-btn modal-btn-secondary" onclick="closeModal()">CANCEL</button></div></div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin + "/api";
+        let appPasscode = localStorage.getItem('stealth_chat_passcode') || "1234";
+        let currentUserCode = "";
+        let currentUserName = "Alex Cool";
+        let activeFriendCode = "";
+        let chatInterval = null;
+        let currentInput = "";
+        let hpSecretCount = 0;
+        let hpCurrentPage = 247;
+        const HP_PAGES = [246, 247, 248];
+
+        const AVATAR_COLORS = ['#007aff','#34c759','#ff9500','#ff3b30','#5856d6','#af52de','#ff2d55','#5ac8fa','#ffcc00','#a2845e'];
+        function getAvatarColor(code) { let h=0; for(let i=0;i<code.length;i++)h=code.charCodeAt(i)+((h<<5)-h); return AVATAR_COLORS[Math.abs(h)%AVATAR_COLORS.length]; }
+        function showToast(msg) { let t=document.getElementById('toast'); if(!t){t=document.createElement('div'); t.id='toast'; t.className='toast'; document.body.appendChild(t);} t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+
+        function pressCalc(val) {
+            const screen = document.getElementById('calc-screen');
+            if (val === 'C') { currentInput = ""; screen.textContent = "0"; }
+            else if (val === '=') {
+                if (currentInput === appPasscode) {
+                    screen.classList.add('unlocked'); screen.textContent = "Unlocked";
+                    setTimeout(() => { screen.classList.remove('unlocked'); document.getElementById('page-calculator').style.opacity = '0'; setTimeout(() => { document.getElementById('page-calculator').classList.remove('active'); document.getElementById('app-wrapper').style.display = 'flex'; goToPage('page-dm-homepage'); registerOrLoadUser(); }, 500); }, 500);
+                } else {
+                    try { if (!/^[0-9+\-*/.]+$/.test(currentInput) || currentInput === "") throw new Error("Invalid"); const result = Function('"use strict"; return (' + currentInput + ')')(); screen.textContent = result; currentInput = String(result); }
+                    catch { screen.classList.add('error'); screen.textContent = "Error"; setTimeout(() => { screen.classList.remove('error'); currentInput = ""; screen.textContent = "0"; }, 1000); }
+                }
+            } else { if (screen.textContent === "0" || screen.textContent === "Error" || screen.textContent === "Unlocked") currentInput = val; else currentInput += val; screen.textContent = currentInput; }
+        }
+
+        function hpTurnPage(dir) {
+            const idx = HP_PAGES.indexOf(hpCurrentPage);
+            const newIdx = idx + dir;
+            if (newIdx < 0 || newIdx >= HP_PAGES.length) return;
+            hpCurrentPage = HP_PAGES[newIdx];
+            HP_PAGES.forEach(p => document.getElementById('hp-page-' + p).classList.remove('active'));
+            document.getElementById('hp-page-' + hpCurrentPage).classList.add('active');
+            document.getElementById('hp-prev').disabled = (newIdx === 0);
+            document.getElementById('hp-next').disabled = (newIdx === HP_PAGES.length - 1);
+        }
+
+        function triggerHarryPotter() {
+            document.getElementById('app-wrapper').style.display = 'none';
+            document.getElementById('page-calculator').classList.remove('active');
+            const hpPage = document.getElementById('page-harry-potter');
+            hpPage.classList.add('active');
+            hpSecretCount = 0;
+            hpCurrentPage = 247;
+            HP_PAGES.forEach(p => document.getElementById('hp-page-' + p).classList.remove('active'));
+            document.getElementById('hp-page-247').classList.add('active');
+            document.getElementById('hp-prev').disabled = false;
+            document.getElementById('hp-next').disabled = false;
+        }
+
+        function hpSecretClick() {
+            hpSecretCount++;
+            if (hpSecretCount >= 5) {
+                hpSecretCount = 0;
+                document.getElementById('page-harry-potter').classList.remove('active');
+                document.getElementById('app-wrapper').style.display = 'flex';
+                goToPage('page-dm-homepage');
+                showToast("Welcome back!");
+            }
+        }
+
+        function goToPage(pageId) {
+            clearInterval(chatInterval);
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            if (pageId === 'page-dm-homepage') { fetchFriends(); fetchNotes(); document.getElementById('current-datetime').textContent = new Date().toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+        }
+        function switchMobileTab(tabId, tabElem) { document.querySelectorAll('.col-left, .col-mid, .col-right').forEach(c => c.classList.remove('mobile-active')); document.getElementById(tabId).classList.add('mobile-active'); document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active')); tabElem.classList.add('active'); }
+        function triggerPanic() { document.getElementById('app-wrapper').style.display = 'none'; document.getElementById('page-harry-potter').classList.remove('active'); const calcPage = document.getElementById('page-calculator'); calcPage.style.opacity = '1'; calcPage.classList.add('active'); document.getElementById('calc-screen').textContent = "0"; currentInput = ""; }
+        function showSuccessModal(msg, chatCode=null) { document.getElementById('modal-container').style.display = 'flex'; document.getElementById('modal-success').style.display = 'block'; document.getElementById('modal-error').style.display = 'none'; document.getElementById('modal-write-note').style.display = 'none'; document.getElementById('success-text').textContent = msg; const chatBtn = document.getElementById('btn-success-chat'); if(chatCode){ chatBtn.style.display='block'; chatBtn.onclick = () => { closeModal(); openChat(chatCode, msg.split(":")[1].split("(")[0].trim()); }; } else { chatBtn.style.display='none'; } }
+        function showErrorModal(msg) { document.getElementById('modal-container').style.display = 'flex'; document.getElementById('modal-error').style.display = 'block'; document.getElementById('modal-success').style.display = 'none'; document.getElementById('modal-write-note').style.display = 'none'; document.getElementById('error-text').textContent = msg; }
+        function openWriteNoteModal() { document.getElementById('modal-container').style.display = 'flex'; document.getElementById('modal-write-note').style.display = 'block'; document.getElementById('modal-success').style.display = 'none'; document.getElementById('modal-error').style.display = 'none'; document.getElementById('note-text-input').value = ""; }
+        function closeModal() { document.getElementById('modal-container').style.display = 'none'; }
+        function updateProfileUI(user) { document.getElementById('profile-code').textContent = currentUserCode; document.getElementById('profile-name').textContent = user.name; document.getElementById('profile-bio').textContent = user.bio; document.getElementById('header-avatar').textContent = user.name[0]; document.getElementById('profile-pic').textContent = user.name[0]; }
+
+        async function registerOrLoadUser() {
+            const savedCode = localStorage.getItem('stealth_chat_code');
+            if (savedCode) {
+                try {
+                    const res = await fetch(`${API_URL}/user/${encodeURIComponent(savedCode)}`);
+                    if (res.ok) { const data = await res.json(); currentUserCode = savedCode; currentUserName = data.user.name; updateProfileUI(data.user); fetchFriends(); return; }
+                    else { localStorage.removeItem('stealth_chat_code'); localStorage.removeItem('stealth_chat_name'); }
+                } catch { localStorage.removeItem('stealth_chat_code'); localStorage.removeItem('stealth_chat_name'); }
+            }
+            try {
+                const res = await fetch(`${API_URL}/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: currentUserName }) });
+                const data = await res.json();
+                currentUserCode = data.code; currentUserName = data.user.name;
+                localStorage.setItem('stealth_chat_code', currentUserCode);
+                localStorage.setItem('stealth_chat_name', currentUserName);
+                updateProfileUI(data.user); fetchFriends();
+            } catch (err) { console.error("Backend offline.", err); }
+        }
+
+        async function submitAddFriend() {
+            const codeField = document.getElementById('add-friend-input');
+            const code = codeField.value.trim();
+            if (!code) return;
+            try {
+                const res = await fetch(`${API_URL}/add-friend`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ my_code: currentUserCode, friend_code: code }) });
+                const data = await res.json();
+                if (data.success) { showSuccessModal(`Friend Added: ${data.friend_name}`, data.friend_code); codeField.value = ""; fetchFriends(); }
+                else { showErrorModal(data.error || "Failed to add friend."); }
+            } catch { showErrorModal("Cannot connect to server. Make sure Flask is running on port 5000."); }
+        }
+
+        async function fetchFriends() {
+            try {
+                const res = await fetch(`${API_URL}/friends`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: currentUserCode }) });
+                const friends = await res.json();
+                const container = document.getElementById('chat-list');
+                if (friends.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👋</div><div class="empty-state-title">No friends yet</div><div class="empty-state-sub">Go to the Add tab and enter a friend\'s code!</div></div>';
+                } else {
+                    container.innerHTML = "";
+                    friends.forEach(f => { const color = getAvatarColor(f.code); container.innerHTML += `<div class="chat-card" onclick="openChat('${f.code}', '${f.name}')"><div class="chat-avatar" style="background-color: ${color};">${f.name[0]}</div><div class="chat-info"><div class="chat-name">${f.name}</div><div class="chat-preview">${f.last_message}</div></div></div>`; });
+                }
+            } catch {}
+        }
+
+        function openChat(friendCode, friendName) {
+            activeFriendCode = friendCode;
+            document.getElementById('active-chat-name').textContent = friendName;
+            document.getElementById('active-chat-avatar').textContent = friendName[0];
+            document.getElementById('active-chat-avatar').style.backgroundColor = getAvatarColor(friendCode);
+            goToPage('page-texting');
+            fetchMessages();
+            chatInterval = setInterval(fetchMessages, 2000);
+            setTimeout(() => document.getElementById('message-input').focus(), 300);
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const msgText = input.value.trim();
+            if (!msgText) return;
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            try {
+                await fetch(`${API_URL}/send-message`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sender: currentUserCode, receiver: activeFriendCode, text: msgText, timestamp: timeStr }) });
+                input.value = ""; fetchMessages();
+            } catch {}
+        }
+
+        async function fetchMessages() {
+            try {
+                const res = await fetch(`${API_URL}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user1: currentUserCode, user2: activeFriendCode }) });
+                const msgs = await res.json();
+                const container = document.getElementById('chat-messages');
+                if (msgs.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👋</div><div class="empty-state-title">No messages yet</div><div class="empty-state-sub">Say hello to start the conversation!</div></div>';
+                } else {
+                    container.innerHTML = "";
+                    msgs.forEach(msg => { const isMyMsg = msg.sender === currentUserCode; const bClass = isMyMsg ? 'sent' : 'received'; container.innerHTML += `<div class="msg-bubble ${bClass}">${msg.text}</div><div class="msg-time">${msg.timestamp}</div>`; });
+                    container.scrollTop = container.scrollHeight;
+                }
+            } catch {}
+        }
+
+        async function removeCurrentFriend() {
+            if (!confirm("Remove this friend? They'll be removed from your list.")) return;
+            try {
+                const res = await fetch(`${API_URL}/remove-friend`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ my_code: currentUserCode, friend_code: activeFriendCode }) });
+                const data = await res.json();
+                if (data.success) { showToast("Friend removed"); goToPage('page-dm-homepage'); fetchFriends(); }
+                else { showErrorModal(data.error || "Could not remove friend"); }
+            } catch { showErrorModal("Network error"); }
+        }
+
+        async function submitNote() {
+            const text = document.getElementById('note-text-input').value.trim();
+            if (!text) return;
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            try {
+                await fetch(`${API_URL}/notes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ author_name: currentUserName, text: text, timestamp: timeStr }) });
+                closeModal(); fetchNotes();
+            } catch {}
+        }
+
+        async function fetchNotes() {
+            try {
+                const res = await fetch(`${API_URL}/notes`);
+                const notes = await res.json();
+                const container = document.getElementById('notes-list');
+                if (notes.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><div class="empty-state-title">No notes yet</div><div class="empty-state-sub">Be the first to post something!</div></div>';
+                } else {
+                    container.innerHTML = "";
+                    notes.forEach(note => { const color = getAvatarColor(note.author_name + "_note"); container.innerHTML += `<div class="note-card"><div class="note-header"><div class="chat-avatar" style="width: 24px; height: 24px; font-size:10px; background-color:${color};">${note.author_name[0]}</div><div class="note-author">${note.author_name}</div></div><div class="note-content">${note.text}</div><div class="note-time">${note.timestamp}</div></div>`; });
+                }
+            } catch {}
+        }
+
+        async function updateProfileBackend(newName, newBio) {
+            try {
+                const res = await fetch(`${API_URL}/profile`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: currentUserCode, name: newName, bio: newBio }) });
+                const data = await res.json();
+                if (data.success) { currentUserName = data.user.name; localStorage.setItem('stealth_chat_name', currentUserName); updateProfileUI(data.user); }
+            } catch {}
+        }
+        function editProfileName() { const current = document.getElementById('profile-name').textContent; const res = prompt("Enter new Display Name:", current); if (res) updateProfileBackend(res, document.getElementById('profile-bio').textContent); }
+        function editProfileBio() { const current = document.getElementById('profile-bio').textContent; const res = prompt("Enter new Bio:", current); if (res) updateProfileBackend(document.getElementById('profile-name').textContent, res); }
+        function copyCodeToClipboard() { navigator.clipboard.writeText(document.getElementById('profile-code').textContent); showToast("Code copied to clipboard!"); }
+        async function regenerateCode() {
+            if (!confirm("Are you sure? Your friends won't be able to add you with your old code!")) return;
+            try {
+                const res = await fetch(`${API_URL}/regenerate-code`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: currentUserCode }) });
+                const data = await res.json();
+                if (data.success) { currentUserCode = data.new_code; localStorage.setItem('stealth_chat_code', currentUserCode); document.getElementById('profile-code').textContent = currentUserCode; showToast(`New code: ${currentUserCode}`); }
+                else { showErrorModal("Failed: " + (data.error || "Unknown error")); }
+            } catch { showErrorModal("Server error. Please try again."); }
+        }
+        let avatarClickCount = 0;
+        function countAvatarClicks() {
+            avatarClickCount++;
+            if (avatarClickCount >= 5) {
+                avatarClickCount = 0;
+                const code = prompt("Enter a new 4-digit code to unlock your Calculator App:");
+                if (code && /^\d+$/.test(code)) { appPasscode = code; localStorage.setItem('stealth_chat_passcode', code); showToast(`Passcode changed to: ${code}`); }
+                else showToast("Invalid passcode. Numbers only!");
+            }
+        }
+
+        document.getElementById('add-friend-input').addEventListener('keypress', function(e) { if (e.key === 'Enter') submitAddFriend(); });
+        document.getElementById('message-input').addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
+        document.getElementById('note-text-input').addEventListener('keypress', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitNote(); } });
+
+        // --- KEYBOARD SHORTCUTS ---
+        document.addEventListener('keydown', function(e) {
+            const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+            const cmdKey = isMac ? e.metaKey : e.ctrlKey;
+            if (!cmdKey) return;
+            if (e.shiftKey && e.key.toLowerCase() === 'c') {
+                e.preventDefault();
+                triggerPanic();
+            }
+            if (e.shiftKey && e.key.toLowerCase() === 'h') {
+                e.preventDefault();
+                triggerHarryPotter();
+            }
+        });
+    </script>
+</body>
+</html>
